@@ -1,0 +1,382 @@
+﻿Exportfile for AOT version 1.0 or later
+Formatversion: 1
+
+***Element: CLS
+
+; Microsoft Dynamics AX Class: Ohoterz_SMS unloaded
+; --------------------------------------------------------------------------------
+  CLSVERSION 1
+  
+  CLASS #Ohoterz_SMS
+    PROPERTIES
+      Name                #Ohoterz_SMS
+      Origin              #{3EFBAA81-876A-48E1-B0E8-BA7406EE5299}
+    ENDPROPERTIES
+    
+    METHODS
+      SOURCE #send
+        #//Call this method to send SMS you can look example at Job SendSMS
+        #public str send(str 20 _SendTo, str 100 _SendMsg, str 30 _JobNo)
+        #{
+        #    str status;
+        #    str                             url;
+        #    str                             postData;
+        #    str                             returnValue;
+        #    System.Net.HttpWebRequest       request;
+        #    System.Net.HttpWebResponse      response;
+        #    System.Byte[]                   byteArray;
+        #    System.IO.Stream                dataStream;
+        #    System.IO.StreamReader          streamReader;
+        #    System.Net.ServicePoint         servicePoint;
+        #    System.Net.ServicePointManager  servicePointManager;
+        #    CLRObject                       clrObj;
+        #    System.Text.Encoding            utf8;
+        #    ;
+        #
+        #    url = "https://www.thsms.com/api/rest";
+        #    postData = strfmt('method=%1&username=%2&password=%3&from=%4&to=%5&message=%6'
+        #            , "send"
+        #            , "UserNameFromTHSMS"
+        #            , "Password"
+        #            , "SenderName"
+        #            , _SendTo
+        #            , _SendMsg);
+        #
+        #
+        #    new InteropPermission(InteropKind::ClrInterop).assert();
+        #
+        #    clrObj = System.Net.WebRequest::Create(url);
+        #    System.Net.ServicePointManager::set_Expect100Continue(false);
+        #
+        #    request = clrObj;
+        #    request.set_Method("POST");
+        #    utf8 = System.Text.Encoding::get_UTF8();
+        #    byteArray = utf8.GetBytes(postData);
+        #    request.set_ContentType("application/x-www-form-urlencoded");
+        #    request.set_ContentLength(byteArray.get_Length());
+        #
+        #    dataStream = request.GetRequestStream();
+        #    dataStream.Write(byteArray, 0, byteArray.get_Length());
+        #    dataStream.Close();
+        #
+        #    try
+        #    {
+        #        response = request.GetResponse();
+        #    }
+        #    catch (Exception::CLRError)
+        #    {
+        #        postdata = "";
+        #    }
+        #
+        #    dataStream = response.GetResponseStream();
+        #    streamReader = new System.IO.StreamReader(dataStream);
+        #    returnValue = streamReader.ReadToEnd();
+        #
+        #    //info(returnvalue);
+        #
+        #    streamReader.Close();
+        #    dataStream.Close();
+        #    response.Close();
+        #
+        #    status = this.writeLogTable(returnvalue,_SendTo,_SendMsg,_JobNo);
+        #
+        #    return status;
+        #}
+      ENDSOURCE
+      SOURCE #writeLogTable
+        #//Use this method to write log table
+        #public str writeLogTable(str _XMLResponse, str 20 _SendTo, str 100 _SendMsg, str 30 _JobNo)
+        #{
+        #    XmlDocument resultXml;
+        #    XmlNodeList xmlScriptList;
+        #    XmlNodeList xmlChildNodeList;
+        #    int i;
+        #    int j;
+        #    Ohoterz_ServiceSMS_Log smsLogTable;
+        #    str 10 Credit_Usage = "0";
+        #    str 10 Credit = "0";
+        #    str 100 ResponseMsg = "System error";
+        #    str 40 Uuid = "";
+        #    str 20 Status = "fail";
+        #    str nodeName;
+        #    ;
+        #
+        #    resultXml = new XmlDocument();
+        #    resultXml.loadXml(_XMLResponse);
+        #
+        #    xmlScriptList = resultXml.documentElement().childNodes();
+        #
+        #    for ( i = 0; i < xmlScriptList.length(); i++)
+        #    {
+        #        //info(xmlScriptList.item(i).nodeName());
+        #
+        #        xmlChildNodeList = xmlScriptList.item(i).childNodes();
+        #        for (j = 0; j < xmlChildNodeList.length() ; j++)
+        #        {
+        #            //info(strFmt("%1 - %2",xmlChildNodeList.item(j).nodeName(),xmlChildNodeList.item(j).innerText()));
+        #            nodeName = xmlChildNodeList.item(j).nodeName();
+        #            switch(nodeName) {
+        #                case "message" : ResponseMsg = xmlChildNodeList.item(j).innerText(); break;
+        #                case "status" : Status = xmlChildNodeList.item(j).innerText(); break;
+        #                case "uuid" : Uuid = xmlChildNodeList.item(j).innerText(); break;
+        #                case "credit_usage" : Credit_Usage = xmlChildNodeList.item(j).innerText(); break;
+        #                case "credit" : Credit = xmlChildNodeList.item(j).innerText(); break;
+        #                default : break;
+        #            }
+        #        }
+        #    }
+        #
+        #    ttsBegin;
+        #    smsLogTable.clear();
+        #    smsLogTable.ServiceOrderId = _JobNo;
+        #    smsLogTable.SendTo = _SendTo;
+        #    smsLogTable.SendMsg = _SendMsg;
+        #    smsLogTable.ResponseMsg = ResponseMsg;
+        #    smsLogTable.Status = Status;
+        #    smsLogTable.uuid = Uuid;
+        #    smsLogTable.Credit_Usage = Credit_Usage;
+        #    smsLogTable.Credit = Credit;
+        #    smsLogTable.insert();
+        #    ttsCommit;
+        #
+        #    return strFmt("%1 - %2",Status,ResponseMsg);
+        #}
+      ENDSOURCE
+      SOURCE #classDeclaration
+        #class Ohoterz_SMS
+        #{
+        #}
+      ENDSOURCE
+    ENDMETHODS
+  ENDCLASS
+
+***Element: DBT
+
+; Microsoft Dynamics AX Table : Ohoterz_ServiceSMS_Log unloaded
+; --------------------------------------------------------------------------------
+  TABLEVERSION 1
+  
+  TABLE #Ohoterz_ServiceSMS_Log
+    EnforceFKRelation 1
+    PROPERTIES
+      Name                #Ohoterz_ServiceSMS_Log
+      CreateRecIdIndex    #Yes
+      PrimaryIndex        #SurrogateKey
+      ClusterIndex        #SurrogateKey
+      CreatedDateTime     #Yes
+      CreatedBy           #Yes
+      Origin              #{5C9FC73F-ED24-46AD-B1B0-53C6C79A01D1}
+    ENDPROPERTIES
+    
+    FIELDS
+      FIELD #Credit
+        STRING
+        PROPERTIES
+          Name                #Credit
+          Table               #Ohoterz_ServiceSMS_Log
+          Origin              #{BCAAD2A5-5E53-4D9E-A65A-FC872A4B7D5E}
+        ENDPROPERTIES
+        
+      FIELD #Credit_Usage
+        STRING
+        PROPERTIES
+          Name                #Credit_Usage
+          Table               #Ohoterz_ServiceSMS_Log
+          Origin              #{E9018A0D-97E2-445C-80ED-D0872F01CCF3}
+        ENDPROPERTIES
+        
+      FIELD #ResponseMsg
+        STRING
+        PROPERTIES
+          Name                #ResponseMsg
+          Table               #Ohoterz_ServiceSMS_Log
+          Origin              #{31646A31-3A37-4049-88C2-9457F0A0331E}
+          StringSize          #100
+        ENDPROPERTIES
+        
+      FIELD #SendMsg
+        STRING
+        PROPERTIES
+          Name                #SendMsg
+          Table               #Ohoterz_ServiceSMS_Log
+          Origin              #{763DEA59-5CF6-445B-9C0F-D287311E2948}
+          StringSize          #100
+        ENDPROPERTIES
+        
+      FIELD #SendTo
+        STRING
+        PROPERTIES
+          Name                #SendTo
+          Table               #Ohoterz_ServiceSMS_Log
+          Origin              #{C788F9F7-8C68-47C8-BECE-9906D3F6B32F}
+          StringSize          #20
+        ENDPROPERTIES
+        
+      FIELD #ServiceOrderId
+        STRING
+        PROPERTIES
+          Name                #ServiceOrderId
+          Table               #Ohoterz_ServiceSMS_Log
+          Origin              #{2BD4EF03-FBDB-4F12-8F8D-8C55F6B49088}
+          ExtendedDataType    #SMAServiceOrderId
+          StringSize          #30
+        ENDPROPERTIES
+        
+      FIELD #Status
+        STRING
+        PROPERTIES
+          Name                #Status
+          Table               #Ohoterz_ServiceSMS_Log
+          Origin              #{A434A593-6857-49E9-A145-747D47DF63F3}
+          StringSize          #20
+        ENDPROPERTIES
+        
+      FIELD #uuid
+        STRING
+        PROPERTIES
+          Name                #uuid
+          Table               #Ohoterz_ServiceSMS_Log
+          Origin              #{E5746DB3-EA1B-44D6-9799-EB10BEC09E15}
+          StringSize          #40
+        ENDPROPERTIES
+        
+    ENDFIELDS
+    GROUPS
+    ENDGROUPS
+    
+    INDICES
+    ENDINDICES
+    FULLTEXTINDICES
+    ENDFULLTEXTINDICES
+    REFERENCES
+    ENDREFERENCES
+    
+    DELETEACTIONS
+    ENDDELETEACTIONS
+    
+    METHODS
+    ENDMETHODS
+  ENDTABLE
+  
+
+***Element: JOB
+
+; Microsoft Dynamics AX Job: xmlParser unloaded
+; --------------------------------------------------------------------------------
+  JOBVERSION 1
+  
+  SOURCE #xmlParser
+    #static void xmlParser(Args _args)
+    #{
+    #    str strResult;
+    #    XmlDocument resultXml;
+    #    XmlNodeList xmlScriptList;
+    #    XmlNodeList xmlChildNodeList;
+    #    XmlElement  nodeScript;
+    #    int i;
+    #    int j;
+    #    ;
+    #
+    #    strResult = "<?xml version=\"1.0\" encoding=\"UTF-8\"?><service generator=\"zend\" version=\"1.0\"><send><message>OK</message><uuid>10c3-cbaafc62-00000000-9bda-bc6b207a</uuid><credit_usage>2</credit_usage><credit>6</credit><status>success</status></send></service>";
+    #
+    #    resultXml = new XmlDocument();
+    #    resultXml.loadXml(strResult);
+    #
+    #    info(resultXml.documentElement().nodeName());
+    #    xmlScriptList = resultXml.documentElement().childNodes();
+    #
+    #
+    #    for ( i = 0; i < xmlScriptList.length(); i++)
+    #    {
+    #        info(xmlScriptList.item(i).nodeName());
+    #
+    #        xmlChildNodeList = xmlScriptList.item(i).childNodes();
+    #        for (j = 0; j < xmlChildNodeList.length() ; j++)
+    #        {
+    #            info(strFmt("%1 - %2",xmlChildNodeList.item(j).nodeName(),xmlChildNodeList.item(j).innerText()));
+    #        }
+    #
+    #    }
+    #
+    #
+    #}
+    #
+    #
+  ENDSOURCE
+  PROPERTIES
+    Origin              #{CFDDD167-A2AB-46CA-BFF5-409701D897D2}
+  ENDPROPERTIES
+  
+
+***Element: JOB
+
+; Microsoft Dynamics AX Job: sendSMS unloaded
+; --------------------------------------------------------------------------------
+  JOBVERSION 1
+  
+  SOURCE #sendSMS
+    #static void sendSMS(Args _args)
+    #{
+    #    Ohoterz_SMS sms;
+    #    str status;
+    #    ;
+    #
+    #    sms = new Ohoterz_SMS();
+    #
+    #    status = sms.send("0899999999","TEST SEND SMS FROM AX2012 NUMBER 1","JOBTEST01");
+    #    info(status);
+    #    status = sms.send("0999999999","TEST SEND SMS FROM AX2012 NUMBER 2","JOBTEST02");
+    #    info(status);
+    #}
+  ENDSOURCE
+  PROPERTIES
+    Origin              #{53317CC5-1946-4682-894D-05B3105AE6EB}
+  ENDPROPERTIES
+  
+
+***Element: PRN
+
+; Microsoft Dynamics AX Project : Ohoterz_SMS unloaded
+; --------------------------------------------------------------------------------
+  PROJECTVERSION 2
+  
+  PROJECT #Ohoterz_SMS
+  SHARED
+  PROPERTIES
+    Name                #Ohoterz_SMS
+    Origin              #{19721476-DDFA-4268-B61C-5C91AE3F553F}
+  ENDPROPERTIES
+  
+    PROJECTCLASS ProjectNode
+    BEGINNODE
+      FILETYPE 0
+      UTILTYPE 45
+      UTILOBJECTID 1026005
+      NODETYPE 329
+      NAME #Ohoterz_SMS
+    ENDNODE
+    BEGINNODE
+      FILETYPE 0
+      UTILTYPE 44
+      UTILOBJECTID 102623
+      NODETYPE 204
+      NAME #Ohoterz_ServiceSMS_Log
+    ENDNODE
+    BEGINNODE
+      FILETYPE 0
+      UTILTYPE 5
+      UTILOBJECTID 0
+      NODETYPE 215
+      NAME #xmlParser
+    ENDNODE
+    BEGINNODE
+      FILETYPE 0
+      UTILTYPE 5
+      UTILOBJECTID 0
+      NODETYPE 215
+      NAME #sendSMS
+    ENDNODE
+  ENDPROJECT
+  
+
+***Element: END
